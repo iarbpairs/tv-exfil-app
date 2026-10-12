@@ -1,0 +1,8 @@
+{
+    "name": "exfil-app",
+    "version": "3.0.0",
+    "packageType": "app",
+    "appName": "TV Exfil",
+    "appPath": "index.html",
+    "description": "Tizen system data collection"
+}
